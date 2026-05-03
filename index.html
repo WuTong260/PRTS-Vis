@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRTS-Vis // TACTICAL TERMINAL</title>
+<link href="https://fonts.loli.net/css2?family=Rajdhani:wght@300;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/css/style.css">
+</head>
+<body>
+
+<div id="custom-titlebar">
+  <span class="title-text">PRTS-Vis // TACTICAL TERMINAL</span>
+  <div class="window-controls">
+    <button id="btn-min" title="Minimize">_</button>
+    <button id="btn-max" title="Maximize">[]</button>
+    <button id="btn-close" title="Close">X</button>
+  </div>
+</div>
+
+<canvas id="particleCanvas"></canvas>
+
+<div id="hud-container" class="hidden">
+  <div id="left-sidebar">
+    <div class="sidebar-label">[ASSET.TREE]</div>
+    <div id="file-list"></div>
+  </div>
+  <div class="resizer-horizontal"></div>
+  <div id="chat-panel">
+    <div id="chat-history"></div>
+    <div class="resizer-handle"></div>
+    <div id="command-line">
+      <span class="prompt">root@PRTS:~#</span>
+      <textarea id="chat-input" placeholder="Enter command..." autocomplete="off" spellcheck="false" rows="1"></textarea>
+      <button id="btn-clear">[CLEAR]</button>
+      <button id="btn-config">[SYS.CONFIG]</button>
+    </div>
+  </div>
+  <div id="sys-monitor-panel" class="hidden">
+    <div class="sys-metrics">
+      <span class="sys-metric cpu">[CPU: --%]</span>
+      <span class="sys-metric ram">[RAM: -- / --]</span>
+    </div>
+    <canvas id="sys-visualizer"></canvas>
+    <div id="sys-specs-matrix"></div>
+    <div id="sys-history"></div>
+  </div>
+</div>
+
+<div id="drag-overlay" class="hidden"><span>DROP TO ANALYZE</span></div>
+
+<div id="config-modal" class="hidden">
+  <div class="config-overlay"></div>
+  <div class="config-panel">
+    <div class="config-title">[SYSTEM CONFIGURATION]</div>
+    <div class="config-field">
+      <label>Provider</label>
+      <select id="config-provider">
+        <option value="OpenAI">OpenAI</option>
+        <option value="DeepSeek">DeepSeek</option>
+        <option value="SiliconFlow">SiliconFlow</option>
+        <option value="Custom">Custom</option>
+      </select>
+    </div>
+    <div class="config-field">
+      <label>Base URL</label>
+      <input type="text" id="config-url" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="config-field">
+      <label>API Key</label>
+      <input type="password" id="config-key" placeholder="sk-..." autocomplete="off" />
+    </div>
+    <div class="config-field">
+      <label>Model Name</label>
+      <input type="text" id="config-model" placeholder="gpt-4o" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="config-actions">
+      <button id="btn-cancel">[CANCEL]</button>
+      <button id="btn-apply">[APPLY]</button>
+    </div>
+  </div>
+</div>
+
+<div class="blast-doors-container interactive" id="blastDoors">
+  <div class="gate-left">
+    <div class="door-layer layer-3"></div>
+    <div class="door-layer layer-2"></div>
+    <div class="door-layer layer-1"></div>
+  </div>
+  <div class="gate-right">
+    <div class="door-layer layer-3"></div>
+    <div class="door-layer layer-2"></div>
+    <div class="door-layer layer-1"></div>
+  </div>
+  <div class="door-seam-glow" id="seamGlow"></div>
+</div>
+
+<div class="wireframe-sphere-container">
+  <div class="wireframe-sphere" id="wireframeSphere">
+    <div class="ring ring-1"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-3"></div>
+    <div class="ring ring-4"></div>
+    <div class="ring ring-5"></div>
+    <div class="ring ring-6"></div>
+    <div class="ring ring-7"></div>
+    <div class="ring ring-8"></div>
+    <div class="ring ring-9"></div>
+    <div class="ring ring-10"></div>
+  </div>
+</div>
+
+<div id="loading-app">
+  <div class="vignette-overlay"></div>
+  <div class="noise-overlay"></div>
+  <div class="hexgrid-overlay"></div>
+  <div class="scanlines-overlay"></div>
+  <div class="grid-overlay"></div>
+  <div class="crosshair crosshair-tl"></div>
+  <div class="crosshair crosshair-tr"></div>
+  <div class="crosshair crosshair-bl"></div>
+  <div class="crosshair crosshair-br"></div>
+
+  <div class="boot-cursor" id="bootCursor">
+    <span class="cursor-block"></span>
+    <span class="boot-text" id="bootText"></span>
+  </div>
+
+  <div class="main-content" id="mainContent">
+    <div class="status-bar-top">
+      <span>SYS.ID:<span class="sys-id"> PRTS-Vis</span></span>
+      <span id="clockDisplay">--:--:--</span>
+      <span>NODE:<span class="sys-id"> PRTS-Vis</span></span>
+    </div>
+
+    <div class="loading-section">
+      <div class="loading-label">PRTS-Vis</div>
+      <div class="loading-subtitle">TACTICAL TERMINAL</div>
+      <div class="progress-percentage" id="progressPercent">0.00%</div>
+      <div class="progress-track-dual">
+        <div class="progress-bar-side progress-bar-left" id="barLeft"></div>
+        <div class="progress-bar-side progress-bar-right" id="barRight"></div>
+        <div class="progress-gap-glow" id="gapGlow"></div>
+      </div>
+      <div class="status-tag" id="statusTag">NEURAL CONNECT // STANDBY</div>
+      <div class="enter-button-wrap" id="enterWrap">
+        <button class="enter-button" id="enterBtn">LOG IN</button>
+      </div>
+    </div>
+
+    <div class="side-panel panel-left" id="panelLeft">
+      <div class="panel-inner">
+        <div class="panel-line"></div>
+        <div class="panel-label">SYSTEM</div>
+        <div class="panel-value">PRTS-Vis</div>
+        <div class="panel-divider"></div>
+        <div class="panel-label">SEC PROTOCOL</div>
+        <div class="panel-value sys-ok">ACTIVE</div>
+        <div class="panel-divider"></div>
+        <div class="panel-label">DEVELOPER</div>
+        <div class="panel-value panel-dev">稚生</div>
+      </div>
+    </div>
+    <div class="side-panel panel-right" id="panelRight">
+      <div class="panel-inner">
+        <div class="panel-line"></div>
+        <div class="panel-label">ORIGINIUM</div>
+        <div class="panel-value">STABLE</div>
+        <div class="panel-divider"></div>
+        <div class="panel-label">NEURAL CLOUD</div>
+        <div class="panel-value sys-ok">SYNCED</div>
+        <div class="panel-divider"></div>
+        <div class="panel-label">LATENCY</div>
+        <div class="panel-value">12ms</div>
+      </div>
+    </div>
+
+    <div class="terminal-log-area" id="logArea">
+      <div class="log-lines" id="logLines"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "name": "closure",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "app/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "electron": "npx electron .",
+    "dist": "vite build && electron-builder",
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "CLOSURE.PRTS-VIS",
+    "productName": "PRTS-Vis",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": null
+    },
+    "files": [
+      "dist/**/*",
+      "app/**/*",
+      "package.json"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^41.5.0",
+    "electron-builder": "^26.0.0",
+    "mammoth": "^1.12.0",
+    "vite": "^8.0.10"
+  }
+}
