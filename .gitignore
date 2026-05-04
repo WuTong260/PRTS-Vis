@@ -5,5 +5,7 @@ release/
 .env
 .env.*
 *.local
+.claude/
+CLAUDE.md
 .DS_Store
 Thumbs.db
