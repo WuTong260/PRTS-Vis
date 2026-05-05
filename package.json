@@ -31,16 +31,17 @@
           ]
         }
       ],
-      "icon": null
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": null
+      "installerIcon": "build/icon.ico"
     },
     "files": [
       "dist/**/*",
       "app/**/*",
+      "build/**/*",
       "package.json"
     ]
   },
