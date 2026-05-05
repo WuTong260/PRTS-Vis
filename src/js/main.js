@@ -52,6 +52,7 @@ var configProvider = document.getElementById('config-provider');
 var configUrl = document.getElementById('config-url');
 var configKey = document.getElementById('config-key');
 var configModel = document.getElementById('config-model');
+var btnUpdate = document.getElementById('btn-update');
 var btnCancel = document.getElementById('btn-cancel');
 var btnApply = document.getElementById('btn-apply');
 
@@ -492,6 +493,33 @@ function init() {
     document.getElementById('btn-min').addEventListener('click', function () { ipcRenderer.send('window-min'); });
     document.getElementById('btn-max').addEventListener('click', function () { ipcRenderer.send('window-max'); });
     document.getElementById('btn-close').addEventListener('click', function () { ipcRenderer.send('window-close'); });
+
+    // ── Auto-updater ──────────────────────────────
+    btnUpdate.addEventListener('click', async function () {
+      appendMessage('ai', '[SYS] 正在检查更新...');
+      var result = await ipcRenderer.invoke('check-for-update');
+      if (result && result.status === 'dev-mode') {
+        appendMessage('ai', '[SYS] 开发模式，跳过更新检查。');
+      }
+    });
+
+    ipcRenderer.on('update-status', function (_event, data) {
+      if (data.status === 'available') {
+        appendMessage('ai', '[SYS] 发现新版本 v' + data.version + '，正在下载...');
+        ipcRenderer.send('start-download');
+      } else if (data.status === 'downloaded') {
+        appendMessage('ai', '[SYS] 更新已下载完成 (v' + data.version + ')。点击 [UPDATE] 立即重启安装。');
+        btnUpdate.textContent = '[RESTART]';
+        btnUpdate.addEventListener('click', function handler() {
+          btnUpdate.removeEventListener('click', handler);
+          ipcRenderer.send('quit-and-install');
+        });
+      } else if (data.status === 'up-to-date') {
+        appendMessage('ai', '[SYS] 已是最新版本。');
+      } else if (data.status === 'error') {
+        appendMessage('ai', '[SYS] 更新检查失败: ' + data.message);
+      }
+    });
   }
 
   // Kick off

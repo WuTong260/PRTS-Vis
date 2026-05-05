@@ -1,6 +1,7 @@
 const { app, BrowserWindow, session, ipcMain } = require('electron');
 const path = require('path');
 const os = require('os');
+const { autoUpdater } = require('electron-updater');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -46,7 +47,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    win.loadURL('http://localhost:3000');
+    win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
@@ -116,9 +117,71 @@ ipcMain.handle('get-sys-stats', function () {
   };
 });
 
+function setupAutoUpdater(win) {
+  if (isDev) return;
+
+  autoUpdater.autoDownload = false;
+
+  autoUpdater.on('update-available', function (info) {
+    win.webContents.send('update-status', {
+      status: 'available',
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on('download-progress', function (progress) {
+    win.webContents.send('update-status', {
+      status: 'downloading',
+      percent: Math.round(progress.percent),
+    });
+  });
+
+  autoUpdater.on('update-downloaded', function (info) {
+    win.webContents.send('update-status', {
+      status: 'downloaded',
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on('error', function (err) {
+    win.webContents.send('update-status', {
+      status: 'error',
+      message: err.message,
+    });
+  });
+
+  autoUpdater.on('update-not-available', function () {
+    win.webContents.send('update-status', { status: 'up-to-date' });
+  });
+
+  // Check after a short delay so the window is ready
+  setTimeout(function () {
+    autoUpdater.checkForUpdates().catch(function () {});
+  }, 5000);
+}
+
+ipcMain.handle('check-for-update', function () {
+  if (isDev) return { status: 'dev-mode' };
+  try {
+    var result = autoUpdater.checkForUpdates();
+    return result;
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+});
+
+ipcMain.on('start-download', function () {
+  if (!isDev) autoUpdater.downloadUpdate();
+});
+
+ipcMain.on('quit-and-install', function () {
+  autoUpdater.quitAndInstall();
+});
+
 app.whenReady().then(() => {
   setupPermissions();
   createWindow();
+  setupAutoUpdater(BrowserWindow.getAllWindows()[0] || null);
 });
 
 app.on('window-all-closed', () => {
