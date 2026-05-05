@@ -422,7 +422,7 @@ html, body {
   font-size: calc(14px * var(--ui-scale, 1));
   letter-spacing: 0.25em;
   color: var(--cyan);
-  margin-left: calc(10px * var(--ui-scale, 1));
+  margin-right: calc(10px * var(--ui-scale, 1));
   white-space: nowrap;
 }
 .boot-cursor.fade-out {
