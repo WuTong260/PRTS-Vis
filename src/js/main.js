@@ -259,13 +259,19 @@ function init() {
     configModal.classList.add('hidden');
   });
 
-  btnApply.addEventListener('click', function () {
-    saveConfig({
-      provider: configProvider.value,
-      url: configUrl.value.trim(),
-      apiKey: configKey.value.trim(),
-      model: configModel.value.trim(),
-    });
+  btnApply.addEventListener('click', async function () {
+    console.log('[MAIN] btnApply clicked');
+    try {
+      await saveConfig({
+        provider: configProvider.value,
+        url: configUrl.value.trim(),
+        apiKey: configKey.value.trim(),
+        model: configModel.value.trim(),
+      });
+      console.log('[MAIN] saveConfig completed');
+    } catch (e) {
+      console.error('[MAIN] saveConfig failed:', e.message);
+    }
     configModal.classList.add('hidden');
     appendMessage('ai', '[SYS] Configuration Updated.');
   });

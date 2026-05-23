@@ -4,11 +4,16 @@
   "private": true,
   "type": "module",
   "main": "app/main.cjs",
+  "bin": {
+    "prts": "./bin/prts-cli.js"
+  },
   "scripts": {
     "dev": "vite",
     "electron": "npx electron .",
     "dist": "vite build && electron-builder",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cli:server": "node src/main/cliServer.js",
+    "cli:client": "node bin/prts-cli.js"
   },
   "build": {
     "appId": "CLOSURE.PRTS-VIS",

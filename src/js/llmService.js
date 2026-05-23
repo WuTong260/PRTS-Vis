@@ -1,12 +1,35 @@
 import { getConfig } from './configManager.js';
 import { AGENT_SYSTEM_PROMPT, TOOLS_SCHEMA } from './agentKernel.js';
 import { executeTool } from './tools.js';
+import { CompactionManager } from './context/compactionManager.js';
+import { estimateMessagesTokens, detectModelPrefix, checkCompactionThreshold } from './context/tokenCounter.js';
 
 var chatHistory = [];
 var MAX_HISTORY = 10;
 
+// Compaction manager instance
+var compactionManager = new CompactionManager({
+  maxContextTokens: 80000,
+  warningThreshold: 0.70,
+  autoCompactThreshold: 0.85,
+  preserveLatest: 8,
+});
+
+// Pending compaction state
+var _pendingCompaction = false;
+var _messageQueue = [];
+var _onCompactionStatus = null;
+
+// LLM client wrapper for compaction
+var _llmClient = null;
+
+export function setCompactionStatusCallback(cb) {
+  _onCompactionStatus = cb;
+}
+
 export function clearHistory() {
   chatHistory = [];
+  compactionManager.reset();
   console.log('[AGENT.KERNEL] Chat history cleared.');
 }
 
@@ -19,6 +42,114 @@ export function abortCurrent() {
   }
 }
 
+/**
+ * Check if compaction is needed and trigger if so
+ */
+async function _checkAndCompact(cfg) {
+  const modelPrefix = detectModelPrefix(cfg.model);
+  const compactionNeeded = compactionManager.checkCompactionNeeded(chatHistory, modelPrefix);
+
+  if (compactionNeeded === 'warning') {
+    console.warn('[COMPACTION] Context approaching limit, estimated tokens:', compactionManager.getEstimatedTokens(chatHistory, modelPrefix));
+    if (_onCompactionStatus) {
+      _onCompactionStatus({ status: 'warning', message: '上下文即将达到限制' });
+    }
+  }
+
+  if (compactionNeeded === 'autocompact' && !_pendingCompaction) {
+    console.log('[COMPACTION] Triggering auto-compaction...');
+    return await _triggerCompaction(cfg);
+  }
+
+  return false;
+}
+
+/**
+ * Trigger compaction and wait for completion
+ */
+async function _triggerCompaction(cfg) {
+  if (_pendingCompaction) return true;
+
+  _pendingCompaction = true;
+
+  if (_onCompactionStatus) {
+    _onCompactionStatus({ status: 'compacting', message: '正在压缩上下文...' });
+  }
+
+  try {
+    // Create LLM client for summary generation
+    const summaryClient = {
+      complete: async (prompt) => {
+        const response = await fetch(cfg.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + cfg.apiKey,
+          },
+          body: JSON.stringify({
+            model: cfg.model || 'gpt-4o',
+            messages: [
+              { role: 'system', content: '你是一个简洁的对话摘要助手。' },
+              { role: 'user', content: prompt },
+            ],
+            max_tokens: 500,
+            temperature: 0.3,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Summary API error: ' + response.status);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+      },
+    };
+
+    const modelPrefix = detectModelPrefix(cfg.model);
+    const compacted = await compactionManager.compact(chatHistory, summaryClient, modelPrefix);
+
+    chatHistory = compacted;
+    compactionManager.consecutiveErrors = 0;
+
+    console.log('[COMPACTION] Compaction complete, messages now:', chatHistory.length);
+
+    if (_onCompactionStatus) {
+      _onCompactionStatus({ status: 'complete', message: '上下文压缩完成' });
+    }
+
+    // Process queued messages
+    _processMessageQueue();
+
+    return true;
+  } catch (e) {
+    console.error('[COMPACTION] Compaction failed:', e.message);
+    if (_onCompactionStatus) {
+      _onCompactionStatus({ status: 'error', message: '压缩失败: ' + e.message });
+    }
+    return false;
+  } finally {
+    _pendingCompaction = false;
+  }
+}
+
+/**
+ * Process queued messages after compaction
+ */
+function _processMessageQueue() {
+  if (_messageQueue.length === 0) return;
+
+  const next = _messageQueue.shift();
+  console.log('[LLM] Processing queued message (' + _messageQueue.length + ' remaining)');
+
+  // Use setTimeout to avoid blocking
+  setTimeout(() => {
+    sendMessage(next.text, next.onChunk, next.signal)
+      .then(next.resolve)
+      .catch(next.reject);
+  }, 100);
+}
+
 export async function sendMessage(text, onChunk, signal) {
   var cfg = getConfig();
 
@@ -27,8 +158,29 @@ export async function sendMessage(text, onChunk, signal) {
     return;
   }
 
+  // If compaction is in progress, queue this message
+  if (_pendingCompaction) {
+    console.log('[LLM] Compaction in progress, queueing message');
+    return new Promise((resolve, reject) => {
+      _messageQueue.push({ text, onChunk, signal, resolve, reject });
+    });
+  }
+
+  return _doSendMessage(text, onChunk, signal, cfg);
+}
+
+async function _doSendMessage(text, onChunk, signal, cfg) {
   chatHistory.push({ role: 'user', content: text });
 
+  // Check compaction before sending
+  const modelPrefix = detectModelPrefix(cfg.model);
+  const compactionNeeded = compactionManager.checkCompactionNeeded(chatHistory, modelPrefix);
+
+  if (compactionNeeded === 'warning') {
+    console.warn('[COMPACTION] Context approaching limit');
+  }
+
+  // Build messages with history limit
   var messages = [{ role: 'system', content: AGENT_SYSTEM_PROMPT }];
   var start = chatHistory.length > MAX_HISTORY ? chatHistory.length - MAX_HISTORY : 0;
   for (var i = start; i < chatHistory.length; i++) {
@@ -48,6 +200,29 @@ export async function sendMessage(text, onChunk, signal) {
       if (onChunk) onChunk('\n[SYS] 请求已中断。');
       return;
     }
+
+    // Check for context overflow error
+    const isContextOverflow = e.message.includes('context') ||
+      e.message.includes('maximum') ||
+      e.message.includes('too many') ||
+      e.message.includes('limit');
+
+    if (isContextOverflow) {
+      console.error('[LLM] Context overflow, triggering emergency compaction');
+
+      // Handle overflow - increase error count
+      compactionManager.handleContextOverflow(chatHistory);
+
+      // Trigger compaction
+      const compacted = await _triggerCompaction(cfg);
+
+      if (compacted) {
+        // Remove the failed message from history and retry
+        chatHistory.pop();
+        return _doSendMessage(text, onChunk, signal, cfg);
+      }
+    }
+
     throw e;
   }
 

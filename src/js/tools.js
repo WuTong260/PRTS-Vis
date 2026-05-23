@@ -1,6 +1,38 @@
 import { LOCAL_CVE_DB } from './cveDatabase.js';
 
-function analyze_config_leak(args) {
+/**
+ * Execute tool with optional context (cwd injection)
+ * @param {string} name - Tool name
+ * @param {Object} args - Tool arguments
+ * @param {Object} [context={}] - Execution context (cwd, etc.)
+ * @returns {string} JSON result
+ */
+export async function executeTool(name, args, context = {}) {
+  console.log('[AGENT.KERNEL] Executing tool:', name, 'with args:', JSON.stringify(args), 'context:', context);
+  var fn = TOOL_MAP[name];
+  if (!fn) {
+    return JSON.stringify({ error: 'Unknown tool: ' + name });
+  }
+  try {
+    // Tools receive (args, context) signature - adapt each tool accordingly
+    var result = fn(args, context);
+    // Handle both sync and async tools
+    if (result instanceof Promise) {
+      result = await result;
+    }
+    console.log('[AGENT.KERNEL] Tool result:', result.slice(0, 200));
+    return result;
+  } catch (e) {
+    return JSON.stringify({ error: 'Tool execution failed: ' + e.message });
+  }
+}
+
+/**
+ * Analyze configuration text for hardcoded credentials
+ * @param {Object} args - { config_text }
+ * @param {Object} context - { cwd }
+ */
+function analyze_config_leak(args, context) {
   var text = (args && args.config_text) || '';
   var findings = [];
 
@@ -25,7 +57,12 @@ function analyze_config_leak(args) {
   });
 }
 
-function query_local_cve(args) {
+/**
+ * Query local CVE database
+ * @param {Object} args - { software_name, version }
+ * @param {Object} context - { cwd }
+ */
+function query_local_cve(args, context) {
   var softwareName = (args && args.software_name) || '';
   var version = (args && args.version) || 'unknown';
   console.log('[AGENT.KERNEL] CVE lookup:', softwareName, version);
@@ -48,7 +85,12 @@ function query_local_cve(args) {
   return JSON.stringify({ status: 'safe', message: '本地指纹库未匹配到 ' + key + ' 的已知高危漏洞' });
 }
 
-async function fetch_online_cve(args) {
+/**
+ * Fetch online CVE from GitHub Advisory API
+ * @param {Object} args - { software_name }
+ * @param {Object} context - { cwd }
+ */
+async function fetch_online_cve(args, context) {
   var softwareName = (args && args.software_name) || '';
   console.log('[AGENT.KERNEL] Online CVE fetch:', softwareName);
 
@@ -96,18 +138,3 @@ var TOOL_MAP = {
   query_local_cve: query_local_cve,
   fetch_online_cve: fetch_online_cve,
 };
-
-export async function executeTool(name, args) {
-  console.log('[AGENT.KERNEL] Executing tool:', name, 'with args:', JSON.stringify(args));
-  var fn = TOOL_MAP[name];
-  if (!fn) {
-    return JSON.stringify({ error: 'Unknown tool: ' + name });
-  }
-  try {
-    var result = fn(args || {});
-    console.log('[AGENT.KERNEL] Tool result:', result.slice(0, 200));
-    return result;
-  } catch (e) {
-    return JSON.stringify({ error: 'Tool execution failed: ' + e.message });
-  }
-}

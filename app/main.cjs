@@ -1,6 +1,7 @@
-const { app, BrowserWindow, session, ipcMain } = require('electron');
+const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -59,6 +60,41 @@ var cpuPrev = os.cpus();
 ipcMain.on('window-min', function () { BrowserWindow.getFocusedWindow()?.minimize(); });
 ipcMain.on('window-max', function () { var w = BrowserWindow.getFocusedWindow(); if (w) w.isMaximized() ? w.unmaximize() : w.maximize(); });
 ipcMain.on('window-close', function () { BrowserWindow.getFocusedWindow()?.close(); });
+
+// Tool confirmation dialog
+ipcMain.handle('TOOL_CONFIRM', async function (event, payload) {
+  var win = BrowserWindow.getFocusedWindow();
+  if (!win) return { approved: false, reason: 'No focused window' };
+
+  var buttons = ['取消', '确认执行'];
+  if (payload.warnings && payload.warnings.length > 0) {
+    buttons = ['取消 (Deny)', '确认执行 (Confirm)'];
+  }
+
+  var detail = `工具: ${payload.toolName}\n\n`;
+  if (payload.args) {
+    detail += `参数: ${JSON.stringify(payload.args, null, 2)}\n\n`;
+  }
+  if (payload.warnings && payload.warnings.length > 0) {
+    detail += `⚠️ 警告:\n${payload.warnings.map(w => '• ' + w).join('\n')}\n\n`;
+  }
+  detail += '是否继续执行此工具？';
+
+  var result = await dialog.showMessageBox(win, {
+    type: 'warning',
+    title: '工具执行确认',
+    message: `即将执行: ${payload.toolName}`,
+    detail: detail,
+    buttons: buttons,
+    defaultId: 1,
+    cancelId: 0,
+  });
+
+  return {
+    approved: result.response === 1,
+    reason: result.response === 0 ? 'User cancelled' : null,
+  };
+});
 
 ipcMain.handle('get-sys-stats', function () {
   var cpus = os.cpus();
@@ -176,6 +212,41 @@ ipcMain.on('start-download', function () {
 
 ipcMain.on('quit-and-install', function () {
   autoUpdater.quitAndInstall();
+});
+
+// ── Shared Config File Sync ──
+var CONFIG_DIR = path.join(os.homedir(), '.prts-vis');
+var CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+
+ipcMain.handle('save-config', function (_event, config) {
+  console.log('[MAIN] save-config received, apiKey length:', config.apiKey ? config.apiKey.length : 0);
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    console.log('[MAIN] Writing config:', JSON.stringify(config).slice(0, 100));
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+    console.log('[MAIN] Config saved to:', CONFIG_FILE);
+    return { success: true };
+  } catch (e) {
+    console.error('[MAIN] Failed to save config:', e.message);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('load-config', function () {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) {
+      return { success: true, config: null };
+    }
+    var raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    var config = JSON.parse(raw);
+    console.log('[MAIN] Config loaded from:', CONFIG_FILE);
+    return { success: true, config };
+  } catch (e) {
+    console.error('[MAIN] Failed to load config:', e.message);
+    return { success: false, error: e.message, config: null };
+  }
 });
 
 app.whenReady().then(() => {
