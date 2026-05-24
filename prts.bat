@@ -1,11 +1,15 @@
 @echo off
 setlocal
 
-REM Start CLI server in background using PowerShell job
-powershell -NoProfile -Command "Start-Job -ScriptBlock { Set-Location '%~dp0'; Start-Process node -ArgumentList 'src/main/cliServer.js' -NoNewWindow }" > nul 2>&1
+REM Get the directory where this batch file is located
+set "SCRIPT_DIR=%~dp0"
 
-REM Wait for server to start
+REM Start CLI server in background
+echo [PRTS] Starting server...
+start /b cmd /c "cd /d "%SCRIPT_DIR%" && node src/main/cliServer.js"
+
+REM Wait for server to initialize
 timeout /t 2 /nobreak > nul
 
 REM Run CLI client
-node "%~dp0bin\prts-cli.js" %*
+node "%SCRIPT_DIR%bin\prts-cli.js" %*
