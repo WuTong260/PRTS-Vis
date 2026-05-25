@@ -88,6 +88,21 @@ CLOSURE/
 └── .gitignore
 ```
 
+## 下载安装
+
+### 最新版本
+
+前往 GitHub [Releases](https://github.com/WuTong260/PRTS-Vis/releases/latest) 页面。
+
+下载对应系统的安装包：
+
+| 文件 | 说明 | 适用场景 |
+|------|------|----------|
+| `PRTS-Vis-Setup-X.X.X.exe` | NSIS 安装包 | 标准安装（推荐） |
+| `PRTS-Vis-X.X.X.exe` | 便携版 | 无需安装，直接运行 |
+
+> **提示：** 应用支持**自动更新**。新版本发布后，应用会自动提示下载安装。无需手动前往 GitHub 下载，除非你需要特定版本。
+
 ## 快速开始
 
 ### 前提条件

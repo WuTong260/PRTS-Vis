@@ -60,7 +60,22 @@ CLOSURE/
 └── .gitignore
 ```
 
-## Getting Started
+## Download & Install
+
+### Latest Release
+
+Go to the [Releases](https://github.com/WuTong260/PRTS-Vis/releases/latest) page on GitHub.
+
+Download the installer that matches your system:
+
+| File | Description | Use Case |
+|------|-------------|----------|
+| `PRTS-Vis-Setup-X.X.X.exe` | NSIS Installer | Standard installation (recommended) |
+| `PRTS-Vis-X.X.X.exe` | Portable | No installation needed, run directly |
+
+> **Note:** The app supports **auto-update**. When a new version is released, the app will prompt you to download and install it automatically. You do not need to manually download from GitHub unless you want a specific version.
+
+### Development Setup
 
 ### Prerequisites
 
