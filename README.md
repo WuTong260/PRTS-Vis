@@ -1,32 +1,93 @@
 # PRTS-Vis Tactical Terminal
 
-> 一个工业机能风格的安全审计终端 — Electron 桌面应用，集成 LLM 驱动的漏洞分析引擎。
+> 一个工业机能风格的安全审计终端 — Electron 桌面应用，集成 LLM 驱动的漏洞分析与工具执行引擎。
 
 ## 预览
 
-PRTS-Vis，一个专注于网络与计算机安全的 agent，设计灵感来源于游戏"明日方舟"中的本舰人工智能：PRTS。PRTS-Vis 拥有一个沉浸式战术终端界面，模拟安全审计工作站的视觉体验。
+PRTS-Vis 源自"明日方舟"中本舰人工智能 PRTS 的设计灵感，是一个专注于网络与计算机安全的 Agent。拥有沉浸式战术终端界面，模拟安全审计工作站的视觉体验。
 
-支持 GUI 桌面应用和 CLI 命令行两种使用方式，可对接 OpenAI / DeepSeek / SiliconFlow 等 LLM 提供商，进行漏洞查询、配置文件审计、在线威胁情报抓取等安全任务。
+支持 GUI 桌面应用和 CLI 命令行两种使用方式，可对接 OpenAI / DeepSeek / SiliconFlow 等 LLM 提供商。
+
+## v1.2.0 更新
+
+**17 个 Claude Code 风格工具现已上线**
+
+| 文件操作 | 系统工具 | 安全工具 | 生产力工具 |
+|---------|---------|---------|-----------|
+| ReadFile / WriteFile / Glob / Grep / FileEdit | Bash / WebFetch / WebSearch | AnalyzeConfigLeak / QueryLocalCVE / FetchOnlineCVE | AskUserQuestion / TodoWrite / TaskCreate / Brief / NotebookEdit |
+
+**CLI 增强**
+- 旋转光标等待动画
+- ESC 键随时中断执行
+- 行缓冲流式输出，避免乱码
+- 精简日志，只显示核心内容
+
+**基础设施**
+- ToolRegistry 工具注册中心
+- ToolOrchestrator 并行/串行调度
+- ToolExecutor 自动重试与降级
+- ReadWriteLock 并发控制
+- appState 状态管理与发布订阅
 
 ## 功能
 
 ### 通用
-- **LLM 安全审计内核** — 基于工具调用（function calling）的 CVE 漏洞查询、配置文件凭证泄漏检测、在线威胁情报抓取
+- **LLM 安全审计内核** — 基于 function calling 的 CVE 查询、配置审计、威胁情报抓取
 - **本地 CVE 数据库** — 内置离线漏洞库，支持精确和模糊匹配
-- **多 Provider 配置** — 支持 OpenAI、DeepSeek、SiliconFlow 及自定义 API 端点
-- **GUI / CLI 配置共享** — 配置通过 `~/.prts-vis/config.json` 在桌面应用和命令行间同步
-- **自动更新** — 支持通过 GitHub Releases 自动下载更新
+- **多 Provider 配置** — 支持 OpenAI、DeepSeek、SiliconFlow 及自定义 API
+- **GUI / CLI 配置共享** — 配置通过 `~/.prts-vis/config.json` 同步
+- **自动更新** — 支持 GitHub Releases 自动下载
 
 ### 桌面应用 (GUI)
-- **拖拽文件分析** — 支持 `.txt`、`.md`、`.json`、`.docx` 等格式文件拖入分析
-- **系统监控面板** — 实时显示 CPU、RAM、系统信息等指标
-- **工业机能风视觉** — Canvas 粒子引擎、线框球体视差、动态扫描线/噪点/六角网格覆盖层、blast door 过渡动画
+- **拖拽文件分析** — 支持 `.txt`、`.md`、`.json`、`.docx` 等格式
+- **系统监控面板** — 实时 CPU、RAM、系统信息
+- **工业机能风视觉** — Canvas 粒子引擎、线框球体视差、blast door 过渡动画
 
 ### 命令行 (CLI)
-- **全局命令** — 安装后可在任意终端直接输入 `prts` 启动
-- **交互模式** — `PRTS>` 提示符，支持多轮对话
-- **单次命令** — `prts "查询 OpenSSH 8.4 的漏洞"` 快速执行
-- **流式输出** — 实时显示 Agent 生成内容
+- **全局命令** — 任意终端输入 `prts` 启动
+- **交互模式** — `PRTS>` 提示符，多轮对话
+- **单次命令** — `prts "查询 OpenSSH 漏洞"`
+- **旋转光标** — 流式输出时显示等待动画
+- **ESC 中断** — 随时终止正在执行的任务
+
+## 下载安装
+
+前往 [Releases](https://github.com/WuTong260/PRTS-Vis/releases/latest) 页面下载：
+
+| 文件 | 说明 |
+|------|------|
+| `PRTS-Vis-Setup-X.X.X.exe` | NSIS 安装包（推荐） |
+| `PRTS-Vis-X.X.X.exe` | 便携版，无需安装 |
+
+> 支持**自动更新**，新版本发布后会自动提示。
+
+## 快速开始
+
+### 开发
+
+```bash
+npm install
+npm run dev          # 启动开发服务器
+```
+
+### CLI 模式
+
+```bash
+npm run cli:server   # 启动 CLI 服务器
+npm run cli:client   # 启动 CLI 客户端
+```
+
+或全局安装后直接使用：
+```bash
+prts                 # 交互模式
+prts "查询 Redis 漏洞"  # 单次命令
+```
+
+### 打包
+
+```bash
+npm run dist         # 构建安装包
+```
 
 ## 技术栈
 
@@ -36,7 +97,6 @@ PRTS-Vis，一个专注于网络与计算机安全的 agent，设计灵感来源
 | 构建工具 | Vite |
 | 语言 | 原生 JavaScript (ES Modules) |
 | 样式 | 纯 CSS |
-| 文档解析 | mammoth (.docx) |
 | 打包 | electron-builder |
 | 自动更新 | electron-updater |
 
@@ -44,129 +104,62 @@ PRTS-Vis，一个专注于网络与计算机安全的 agent，设计灵感来源
 
 ```
 CLOSURE/
-├── app/
-│   └── main.cjs              # Electron 主进程
 ├── bin/
-│   └── prts-cli.js          # CLI 客户端
+│   └── prts-cli.js              # CLI 客户端
 ├── src/
 │   ├── css/
-│   │   └── style.css          # 全部样式
+│   │   └── style.css            # 全部样式
 │   ├── js/
-│   │   ├── main.js            # 入口 — 唯一操作 DOM 的文件
-│   │   ├── mainLoop.js        # 中心化 requestAnimationFrame 循环
-│   │   ├── stateMachine.js    # 有限状态机
-│   │   ├── bootSequence.js    # 启动序列编排
-│   │   ├── terminalLogger.js  # 终端日志行渲染
-│   │   ├── particleEngine.js  # Canvas 2D 粒子系统
-│   │   ├── parallax.js        # 鼠标驱动的球体视差旋转
-│   │   ├── agentKernel.js     # LLM 系统提示词 & 工具定义
-│   │   ├── llmService.js      # LLM API 流式调用 (SSE)
-│   │   ├── tools.js           # 工具执行 (CVE 查询、配置审计)
-│   │   ├── configManager.js   # Provider 配置管理 (GUI/CLI 共享)
-│   │   ├── cveDatabase.js     # 本地 CVE 数据库
-│   │   ├── markedLocal.js     # Markdown 解析器
-│   │   ├── sttService.js      # 语音识别服务
-│   │   ├── sysMonitor.js      # 系统监控 & 可视化
-│   │   └── surveillance.js     # 侦察分析
-│   ├── context/
-│   │   ├── compactionManager.js  # 上下文压缩管理
-│   │   └── tokenCounter.js       # Token 估算
+│   │   ├── main.js              # 入口（唯一操作 DOM）
+│   │   ├── mainLoop.js          # 中心化 rAF 循环
+│   │   ├── stateMachine.js      # 有限状态机
+│   │   ├── bootSequence.js      # 启动序列编排
+│   │   ├── agentKernel.js       # LLM 系统提示词 & 工具定义
+│   │   ├── llmService.js        # LLM API 流式调用
+│   │   ├── tools.js             # 工具执行入口
+│   │   ├── configManager.js     # Provider 配置管理
+│   │   ├── state/
+│   │   │   └── appState.js      # 状态管理（pub/sub）
+│   │   └── tools/
+│   │       ├── core/            # 核心基础设施
+│   │       │   ├── Tool.js
+│   │       │   ├── ToolRegistry.js
+│   │       │   ├── ToolOrchestrator.js
+│   │       │   ├── ToolExecutor.js
+│   │       │   ├── ReadWriteLock.js
+│   │       │   ├── InputValidator.js
+│   │       │   └── ValidationError.js
+│   │       ├── execution/        # 执行器
+│   │       │   └── ToolExecutor.js
+│   │       ├── formatters/      # 格式化
+│   │       │   └── ResultSummarizer.js
+│   │       ├── tools/           # 17 个工具实现
+│   │       └── utils/           # 工具函数
 │   ├── main/
-│   │   └── cliServer.js       # CLI 服务器 (UDS/Named Pipe)
-│   └── tools/
-│       └── core/
-│           ├── ToolOrchestrator.js  # 工具并行/串行调度
-│           ├── ToolRegistry.js      # 工具注册表
-│           ├── ReadWriteLock.js     # 读写锁
-│           ├── Tool.js              # 工具基类
-│           ├── InputValidator.js    # 输入验证
-│           └── ValidationError.js  # 验证错误
-├── index.html                 # 单页入口
-├── prts.bat                   # Windows 启动脚本
-├── package.json
-├── vite.config.js
-└── .gitignore
+│   │   └── cliServer.js         # CLI 服务器（UDS/Named Pipe）
+│   └── context/
+│       └── compactionManager.js # 上下文压缩
+├── index.html
+└── package.json
 ```
 
-## 下载安装
+## 配置
 
-### 最新版本
+配置存储在 `~/.prts-vis/config.json`：
 
-前往 GitHub [Releases](https://github.com/WuTong260/PRTS-Vis/releases/latest) 页面。
+| 字段 | 说明 |
+|------|------|
+| provider | OpenAI / DeepSeek / SiliconFlow / Custom |
+| url | API 端点 |
+| apiKey | API 密钥 |
+| model | 模型名称 |
 
-下载对应系统的安装包：
-
-| 文件 | 说明 | 适用场景 |
-|------|------|----------|
-| `PRTS-Vis-Setup-X.X.X.exe` | NSIS 安装包 | 标准安装（推荐） |
-| `PRTS-Vis-X.X.X.exe` | 便携版 | 无需安装，直接运行 |
-
-> **提示：** 应用支持**自动更新**。新版本发布后，应用会自动提示下载安装。无需手动前往 GitHub 下载，除非你需要特定版本。
-
-## 快速开始
-
-### 前提条件
-
-- Node.js 18+
-- npm 9+
-
-### 安装
-
+CLI 模式支持环境变量覆盖：
 ```bash
-npm install
+PRTS_API_KEY=xxx PRTS_MODEL=gpt-4o prts
 ```
 
-### 开发模式
-
-启动 Vite 开发服务器并自动打开 Electron 窗口（含 DevTools）：
-
-```bash
-npm run dev
-```
-
-### CLI 模式
-
-安装后可在任意终端直接使用：
-
-```bash
-prts                              # 交互模式
-prts "查询 Redis 5.0.5 的漏洞"   # 单次命令模式
-```
-
-### 打包构建
-
-```bash
-npm run dist
-```
-
-构建产物输出到 `release/` 目录。
-
-## 使用指南
-
-### GUI 桌面应用
-
-1. **启动应用** — 等待启动序列播放完毕
-2. **点击 LOG IN** — 观看过渡动画
-3. **配置 Provider** — 点击 `[SYS.CONFIG]` 按钮，选择 LLM 提供商并填入 API Key
-4. **输入命令** — 在终端输入框中输入安全分析请求，按 Enter 发送
-5. **拖放文件** — 将文件拖入窗口进行分析（支持 `.txt`、`.md`、`.json`、`.docx`）
-
-### CLI 命令行
-
-```
-PRTS> 查询 OpenSSH 8.4 的漏洞
-PRTS> 审计以下配置：
-PRTS> 在线查询 Log4j 最新漏洞
-PRTS> exit
-```
-
-### 示例指令
-
-- `帮我查一下 Redis 5.0.5 有哪些漏洞`
-- `扫描这份配置文件是否有硬编码凭证`
-- `在线查询 Log4j 最新的漏洞情报`
-
-## 状态机流程
+## 状态机
 
 ```
 IDLE → BOOTING → LOADING → READY → TRANSITIONING → SYSTEM_ONLINE
@@ -176,36 +169,16 @@ IDLE → BOOTING → LOADING → READY → TRANSITIONING → SYSTEM_ONLINE
 |------|------|
 | BOOTING | 逐字打印启动信息 |
 | LOADING | 进度条动画 + 终端日志流 |
-| READY | LOG IN 按钮出现，侧面板滑入 |
+| READY | LOG IN 按钮出现 |
 | TRANSITIONING | 球体环爆发，blast door 打开 |
-| SYSTEM_ONLINE | HUD 界面激活，粒子背景可见 |
+| SYSTEM_ONLINE | HUD 激活，粒子背景可见 |
 
-## 配置
+## 示例指令
 
-配置存储在 `~/.prts-vis/config.json`（CLI 和 GUI 共享）：
-
-| 字段 | 说明 |
-|------|------|
-| provider | Provider 名称 (OpenAI / DeepSeek / SiliconFlow / Custom) |
-| url | API 端点地址 |
-| apiKey | API 密钥 |
-| model | 模型名称 |
-
-### CLI 模式环境变量覆盖
-
-CLI 模式优先使用环境变量：
-
-```bash
-PRTS_API_KEY=xxx PRTS_MODEL=gpt-4o prts
 ```
-
-配置不会以任何形式上传，仅在每次 LLM 请求时通过 `Authorization` 头传输。
-
-## 上下文压缩
-
-长对话场景下会自动触发上下文压缩：
-
-- **差异化截断** — 按工具类型保留消息（read_file 保留较长，bash 输出快速淘汰）
-- **覆盖式摘要** — 维护全局快照而非摘要堆叠
-- **Dynamic Safety Buffer** — 根据模型系数动态调整 token 阈值
-- **后验式补偿** — context overflow 时自动收紧 buffer
+PRTS> 帮我查一下 Redis 5.0.5 有哪些漏洞
+PRTS> 扫描这份配置文件是否有硬编码凭证
+PRTS> 在线查询 Log4j 最新的漏洞情报
+PRTS> 给我说一个最新的 AI 资讯
+PRTS> 列出抖音热搜有哪些
+```
