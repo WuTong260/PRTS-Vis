@@ -15,6 +15,24 @@ const SOCKET_PATH = process.platform === 'win32'
   ? '\\\\.\\pipe\\prts-cli'
   : '/tmp/prts-cli.sock';
 
+// Suppress server logs in CLI mode (passive - check if stdout is suppressed)
+const CLI_MODE = true;
+
+/**
+ * Log only if not in CLI mode
+ */
+function serverLog(...args) {
+  if (!CLI_MODE) {
+    console.log(...args);
+  }
+}
+
+function serverError(...args) {
+  if (!CLI_MODE) {
+    console.error(...args);
+  }
+}
+
 // In-memory connection context store (keyed by socket identifier)
 const connectionContexts = new Map();
 
@@ -36,7 +54,7 @@ function createSocketInterface(socket) {
  */
 function handleConnection(socket) {
   const remoteAddress = socket.remoteAddress || 'local';
-  console.log(`[CLI.SERVER] Client connected: ${remoteAddress}`);
+  serverLog(`[CLI.SERVER] Client connected: ${remoteAddress}`);
 
   const rl = createSocketInterface(socket);
   const context = {
@@ -54,11 +72,11 @@ function handleConnection(socket) {
     try {
       msg = JSON.parse(line);
     } catch (e) {
-      console.error('[CLI.SERVER] Invalid JSON:', line);
+      serverError('[CLI.SERVER] Invalid JSON:', line);
       return;
     }
 
-    console.log('[CLI.SERVER] Received:', msg.type);
+    serverLog('[CLI.SERVER] Received:', msg.type);
 
     switch (msg.type) {
       case 'init':
@@ -74,17 +92,17 @@ function handleConnection(socket) {
         socket.write(JSON.stringify({ type: 'heartbeat_ack', timestamp: Date.now() }) + '\n');
         break;
       default:
-        console.warn('[CLI.SERVER] Unknown message type:', msg.type);
+        serverLog('[CLI.SERVER] Unknown message type:', msg.type);
     }
   });
 
   socket.on('close', () => {
-    console.log('[CLI.SERVER] Client disconnected:', remoteAddress);
+    serverLog('[CLI.SERVER] Client disconnected:', remoteAddress);
     connectionContexts.delete(socket);
   });
 
   socket.on('error', (err) => {
-    console.error('[CLI.SERVER] Socket error:', err.message);
+    serverError('[CLI.SERVER] Socket error:', err.message);
     connectionContexts.delete(socket);
   });
 }
@@ -100,7 +118,7 @@ function handleInit(socket, context, msg) {
   if (msg.terminalSize) context.terminalSize = msg.terminalSize;
   if (msg.sessionId) context.sessionId = msg.sessionId;
 
-  console.log('[CLI.SERVER] Context initialized:', context.cwd);
+  serverLog('[CLI.SERVER] Context initialized:', context.cwd);
 
   socket.write(JSON.stringify({
     type: 'init_ack',
@@ -118,7 +136,9 @@ function handleInit(socket, context, msg) {
 async function handleExecute(socket, context, msg) {
   const text = msg.text || 'Hello from CLI';
 
-  console.log('[CLI.SERVER] Executing with cwd:', context.cwd);
+  // Suppress server logs in CLI mode
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  process.stdout.write = () => {};
 
   // Dynamic import to avoid circular deps
   const { sendMessage, abortCurrent } = await import('../js/agentKernel.js');
@@ -135,7 +155,7 @@ async function handleExecute(socket, context, msg) {
         socket.write(JSON.stringify({ type: 'chunk', data: chunk }) + '\n');
       },
       controller.signal,
-      { context: { cwd: context.cwd } }
+      { context: { cwd: context.cwd, cli: true } }
     );
 
     // Completion
@@ -168,6 +188,8 @@ async function handleExecute(socket, context, msg) {
     }) + '\n');
   } finally {
     context.currentController = null;
+    // Restore stdout
+    process.stdout.write = originalWrite;
   }
 }
 

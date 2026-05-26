@@ -1,29 +1,40 @@
 import { LOCAL_CVE_DB } from './cveDatabase.js';
+import { toolRegistry } from './tools/core/ToolRegistry.js';
 
 /**
  * Execute tool with optional context (cwd injection)
+ * Uses toolRegistry for registered tools.
  * @param {string} name - Tool name
  * @param {Object} args - Tool arguments
  * @param {Object} [context={}] - Execution context (cwd, etc.)
  * @returns {string} JSON result
  */
 export async function executeTool(name, args, context = {}) {
-  console.log('[AGENT.KERNEL] Executing tool:', name, 'with args:', JSON.stringify(args), 'context:', context);
-  var fn = TOOL_MAP[name];
-  if (!fn) {
-    return JSON.stringify({ error: 'Unknown tool: ' + name });
-  }
-  try {
-    // Tools receive (args, context) signature - adapt each tool accordingly
-    var result = fn(args, context);
-    // Handle both sync and async tools
-    if (result instanceof Promise) {
-      result = await result;
+  console.log('[TOOLS] Executing tool:', name, 'with args:', JSON.stringify(args), 'context:', context);
+
+  const tool = toolRegistry.get(name);
+  if (!tool) {
+    // Fallback to legacy TOOL_MAP for backward compatibility
+    const fn = TOOL_MAP[name];
+    if (!fn) {
+      return JSON.stringify({ error: 'Unknown tool: ' + name });
     }
-    console.log('[AGENT.KERNEL] Tool result:', result.slice(0, 200));
-    return result;
+    try {
+      const result = await fn(args, context);
+      console.log('[TOOLS] Legacy tool result:', typeof result === 'string' ? result.slice(0, 200) : result);
+      return typeof result === 'string' ? result : JSON.stringify(result);
+    } catch (e) {
+      return JSON.stringify({ error: 'Tool execution failed: ' + e.message });
+    }
+  }
+
+  try {
+    const result = await tool.call(args, { context });
+    console.log('[TOOLS] Tool result:', typeof result === 'string' ? result.slice(0, 200) : JSON.stringify(result).slice(0, 200));
+    return typeof result === 'string' ? result : JSON.stringify(result);
   } catch (e) {
-    return JSON.stringify({ error: 'Tool execution failed: ' + e.message });
+    console.error('[TOOLS] Tool error:', e.message);
+    return JSON.stringify({ error: e.message });
   }
 }
 

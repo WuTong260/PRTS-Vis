@@ -56,6 +56,330 @@ export var TOOLS_SCHEMA = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      description: '读取文件内容。用于查看源代码、配置文件、文档等。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: '文件路径（相对于 cwd）',
+          },
+          offset: {
+            type: 'number',
+            description: '起始行号（默认 1）',
+          },
+          limit: {
+            type: 'number',
+            description: '读取行数限制',
+          },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'write_file',
+      description: '创建或覆盖文件内容',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: '文件路径',
+          },
+          content: {
+            type: 'string',
+            description: '文件内容',
+          },
+        },
+        required: ['path', 'content'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'glob',
+      description: '搜索匹配 glob 模式的文件',
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: {
+            type: 'string',
+            description: 'Glob 模式，如 *.js, **/*.ts',
+          },
+          path: {
+            type: 'string',
+            description: '搜索目录（默认 cwd）',
+          },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'grep',
+      description: '在文件中搜索包含指定文本的行',
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: {
+            type: 'string',
+            description: '搜索模式（支持正则）',
+          },
+          path: {
+            type: 'string',
+            description: '搜索目录',
+          },
+          case_sensitive: {
+            type: 'boolean',
+            description: '是否区分大小写',
+          },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'bash',
+      description: '执行 bash 命令。用于文件操作、Git 命令、构建脚本等。',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: {
+            type: 'string',
+            description: '要执行的命令',
+          },
+          cwd: {
+            type: 'string',
+            description: '工作目录',
+          },
+          timeout: {
+            type: 'number',
+            description: '超时（毫秒）',
+          },
+        },
+        required: ['command'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'web_fetch',
+      description: '获取网页内容',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: '网页 URL',
+          },
+        },
+        required: ['url'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'edit',
+      description: '编辑文件内容。传入旧字符串和新字符串，精确替换文件中的指定文本。',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: '文件路径',
+          },
+          old_string: {
+            type: 'string',
+            description: '要替换的原始文本',
+          },
+          new_string: {
+            type: 'string',
+            description: '替换后的新文本',
+          },
+          replace_all: {
+            type: 'boolean',
+            description: '是否替换所有匹配项（默认 false）',
+          },
+        },
+        required: ['file_path', 'old_string', 'new_string'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'ask_user_question',
+      description: '向用户提问以获取澄清信息。支持多选项选择题。',
+      parameters: {
+        type: 'object',
+        properties: {
+          questions: {
+            type: 'array',
+            description: '问题列表（1-4个问题）',
+            items: {
+              type: 'object',
+              properties: {
+                question: {
+                  type: 'string',
+                  description: '完整问题',
+                },
+                header: {
+                  type: 'string',
+                  description: '简短标签（最多12字符）',
+                },
+                options: {
+                  type: 'array',
+                  description: '选项列表（2-4个）',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      description: { type: 'string' },
+                    },
+                  },
+                },
+                multi_select: {
+                  type: 'boolean',
+                  description: '是否允许多选',
+                },
+              },
+            },
+          },
+        },
+        required: ['questions'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'todo_write',
+      description: '管理会话任务清单。更新待办事项列表状态。',
+      parameters: {
+        type: 'object',
+        properties: {
+          todos: {
+            type: 'array',
+            description: '更新后的 todo 列表',
+            items: {
+              type: 'object',
+              properties: {
+                content: {
+                  type: 'string',
+                  description: '任务描述',
+                },
+                status: {
+                  type: 'string',
+                  enum: ['in_progress', 'pending', 'completed'],
+                  description: '任务状态',
+                },
+                activeForm: {
+                  type: 'string',
+                  description: '进行时形式',
+                },
+              },
+            },
+          },
+        },
+        required: ['todos'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: '搜索网络获取最新信息',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索查询词' },
+          allowed_domains: { type: 'array', items: { type: 'string' }, description: '仅搜索这些域名' },
+          blocked_domains: { type: 'array', items: { type: 'string' }, description: '排除这些域名' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'tool_search',
+      description: '搜索可用的工具',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索查询词' },
+          max_results: { type: 'number', description: '最大返回结果数' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'task_create',
+      description: '创建新任务到任务列表',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string', description: '任务标题' },
+          description: { type: 'string', description: '任务详细描述' },
+          activeForm: { type: 'string', description: '进行时形式' },
+        },
+        required: ['subject'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'brief',
+      description: '向用户发送消息/报告',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: '消息内容' },
+          attachments: { type: 'array', items: { type: 'string' }, description: '附件文件' },
+          status: { type: 'string', enum: ['normal', 'proactive'] },
+        },
+        required: ['message'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'notebook_edit',
+      description: '编辑 Jupyter notebook 的 cell',
+      parameters: {
+        type: 'object',
+        properties: {
+          notebook_path: { type: 'string', description: 'Notebook 路径' },
+          cell_id: { type: 'string', description: 'Cell ID' },
+          new_source: { type: 'string', description: 'Cell 新内容' },
+          cell_type: { type: 'string', enum: ['code', 'markdown'] },
+          edit_mode: { type: 'string', enum: ['replace', 'insert', 'delete'] },
+        },
+        required: ['notebook_path', 'new_source'],
+      },
+    },
+  },
 ];
 
 // Tool System Imports
@@ -63,30 +387,71 @@ import { toolRegistry } from './tools/core/ToolRegistry.js';
 import { ToolOrchestrator } from './tools/core/ToolOrchestrator.js';
 import { ToolExecutor } from './tools/execution/ToolExecutor.js';
 import { resultSummarizer } from './tools/formatters/ResultSummarizer.js';
+import { executeTool } from './tools.js';
 
 // Tool Implementations
 import { AnalyzeConfigLeakTool } from './tools/tools/AnalyzeConfigLeakTool.js';
 import { QueryLocalCveTool } from './tools/tools/QueryLocalCveTool.js';
 import { FetchOnlineCveTool } from './tools/tools/FetchOnlineCveTool.js';
+import { ReadFileTool } from './tools/tools/ReadFileTool.js';
+import { WriteFileTool } from './tools/tools/WriteFileTool.js';
+import { GlobTool } from './tools/tools/GlobTool.js';
+import { GrepTool } from './tools/tools/GrepTool.js';
+import { BashTool } from './tools/tools/BashTool.js';
+import { WebFetchTool } from './tools/tools/WebFetchTool.js';
+import { FileEditTool } from './tools/tools/FileEditTool.js';
+import { AskUserQuestionTool } from './tools/tools/AskUserQuestionTool.js';
+import { TodoWriteTool } from './tools/tools/TodoWriteTool.js';
+import { WebSearchTool } from './tools/tools/WebSearchTool.js';
+import { ToolSearchTool } from './tools/tools/ToolSearchTool.js';
+import { TaskCreateTool } from './tools/tools/TaskCreateTool.js';
+import { BriefTool } from './tools/tools/BriefTool.js';
+import { NotebookEditTool } from './tools/tools/NotebookEditTool.js';
 
 // Initialize Tool Registry
 toolRegistry.registerAll([
   AnalyzeConfigLeakTool,
   QueryLocalCveTool,
   FetchOnlineCveTool,
+  ReadFileTool,
+  WriteFileTool,
+  GlobTool,
+  GrepTool,
+  BashTool,
+  WebFetchTool,
+  FileEditTool,
+  AskUserQuestionTool,
+  TodoWriteTool,
+  WebSearchTool,
+  ToolSearchTool,
+  TaskCreateTool,
+  BriefTool,
+  NotebookEditTool,
 ]);
 
 // Create orchestrator and executor with progress callback
+let _cliMode = false;
+
 const toolOrchestrator = new ToolOrchestrator({
   maxConcurrency: 5,
   onProgress: (event) => {
+    // Suppress verbose tool logging in CLI mode
+    if (_cliMode) return;
     console.log('[TOOL.ORCH]', event.type, event.toolName || '', event.toolUseID || '');
   },
 });
 
+// Get IPC renderer for permission confirmations (if in Electron)
+let _ipcRenderer = null;
+try {
+  const electron = await import('electron');
+  _ipcRenderer = electron.ipcRenderer;
+} catch {}
+
 const toolExecutor = new ToolExecutor(toolOrchestrator, {
   summarizer: resultSummarizer,
   maxRetries: 3,
+  ipcRenderer: _ipcRenderer,
 });
 
 // Degradation strategies
@@ -139,6 +504,11 @@ import { getConfig } from './configManager.js';
 export async function sendMessage(text, onChunk, signal, options = {}) {
   var cfg = getConfig();
 
+  // Enable CLI mode if context has cli: true
+  if (options.context?.cli) {
+    _cliMode = true;
+  }
+
   if (!cfg.url || !cfg.apiKey) {
     if (onChunk) onChunk('[ERR] No API endpoint configured. Open [SYS.CONFIG] to set your provider credentials.');
     return;
@@ -174,6 +544,9 @@ export async function sendMessage(text, onChunk, signal, options = {}) {
   if (fullResponse.trim()) {
     chatHistory.push({ role: 'assistant', content: fullResponse });
   }
+
+  // Reset CLI mode after request completes
+  _cliMode = false;
 }
 
 import { toolExecutor as executor } from './agentKernel.js';

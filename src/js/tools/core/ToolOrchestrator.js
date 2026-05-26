@@ -175,7 +175,7 @@ export class ToolOrchestrator {
     const startTime = Date.now();
 
     try {
-      const result = await this._executeWithTimeout(tool, call.arguments);
+      const result = await this._executeWithTimeout(tool, call.arguments, context);
       const duration = Date.now() - startTime;
 
       this.onProgress({ type: 'complete', toolUseID: call.id, duration });
@@ -192,10 +192,10 @@ export class ToolOrchestrator {
     }
   }
 
-  async _executeWithTimeout(tool, args) {
+  async _executeWithTimeout(tool, args, context) {
     const timeout = tool.timeout || 60000;
     return Promise.race([
-      tool.call(args),
+      tool.call(args, { context }),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error(`Tool timeout after ${timeout}ms`)), timeout)
       ),
