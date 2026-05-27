@@ -18,15 +18,14 @@ function formatBytes(bytes) {
 }
 
 function drawRadar() {
-  requestAnimationFrame(drawRadar);
+  if (cpuHistory.length < 2) return;
 
   var w = canvas.width;
   var h = canvas.height;
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   ctx.fillRect(0, 0, w, h);
-
-  if (cpuHistory.length < 2) return;
 
   var stepX = w / (MAX_HISTORY - 1);
   var startX = w - (cpuHistory.length - 1) * stepX;
@@ -59,26 +58,31 @@ function drawRadar() {
   ctx.fill();
 }
 
+var needsRedraw = false;
+
+function scheduleRadarRedraw() {
+  needsRedraw = true;
+}
+
+function runRadarLoop() {
+  if (needsRedraw) {
+    needsRedraw = false;
+    drawRadar();
+  }
+  requestAnimationFrame(runRadarLoop);
+}
+
 function pollStats(ipcRenderer) {
   ipcRenderer.invoke('get-sys-stats').then(function (stats) {
     cpuEl.textContent = '[CPU: ' + stats.cpu + '%]';
     ramEl.textContent = '[RAM: ' + formatBytes(stats.usedMem) + ' / ' + formatBytes(stats.totalMem) + ']';
-    cpuHistory.push(stats.cpu);
-    if (cpuHistory.length > MAX_HISTORY) cpuHistory.shift();
-  }).catch(function () {
-    cpuEl.textContent = '[CPU: ERR]';
-  });
-}
-
-function pollHardwareStats(ipcRenderer) {
-  ipcRenderer.invoke('get-sys-stats').then(function (stats) {
     if (gpuEl) gpuEl.textContent = '[GPU: ' + (stats.gpu?.utilization || 0) + '% ' + (stats.gpu?.name?.substring(0, 15) || 'N/A') + ']';
     if (tempEl) tempEl.textContent = '[TEMP: ' + (stats.temperature || 0) + '°C]';
-    if (fanEl) fanEl.textContent = '[FAN: ' + (stats.fanSpeed || 0) + ' RPM]';
+        cpuHistory.push(stats.cpu);
+    if (cpuHistory.length > MAX_HISTORY) cpuHistory.shift();
+    scheduleRadarRedraw();
   }).catch(function () {
-    if (gpuEl) gpuEl.textContent = '[GPU: ERR]';
-    if (tempEl) tempEl.textContent = '[TEMP: ERR]';
-    if (fanEl) fanEl.textContent = '[FAN: ERR]';
+    cpuEl.textContent = '[CPU: ERR]';
   });
 }
 
@@ -117,8 +121,6 @@ export function initSysMonitor() {
         { label: '[系统内核]',   val: stats.platform + ' ' + stats.release },
         { label: '[NET_IP]',    val: stats.ipAddress },
         { label: '[GPU]',       val: (stats.gpu?.name || 'N/A').substring(0, 25) },
-        { label: '[温度]',       val: (stats.temperature || 0) + '°C' },
-        { label: '[风扇]',       val: (stats.fanSpeed || 0) + ' RPM' },
         { label: '[驱动引擎]',   val: 'Node v' + stats.nodeVer },
         { label: '[终端外壳]',   val: 'Electron v' + stats.electronVer },
       ];
@@ -131,10 +133,9 @@ export function initSysMonitor() {
   });
 
   pollStats(ipcRenderer);
-  pollHardwareStats(ipcRenderer);
   pollTimer = setInterval(function () {
     pollStats(ipcRenderer);
-    pollHardwareStats(ipcRenderer);
-  }, 1000);
-  drawRadar();
+  }, 2000);
+  scheduleRadarRedraw();
+  runRadarLoop();
 }

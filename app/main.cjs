@@ -64,7 +64,12 @@ function createWindow() {
   }
 }
 
-var cpuPrev = os.cpus();
+// cpuPrev initialized lazily on first call to avoid startup time skew
+var cpuPrev = null;
+function getCpuPrev() {
+  if (!cpuPrev) cpuPrev = os.cpus();
+  return cpuPrev;
+}
 
 ipcMain.on('window-min', function () { BrowserWindow.getFocusedWindow()?.minimize(); });
 ipcMain.on('window-max', function () { var w = BrowserWindow.getFocusedWindow(); if (w) w.isMaximized() ? w.unmaximize() : w.maximize(); });
@@ -106,27 +111,7 @@ ipcMain.handle('TOOL_CONFIRM', async function (event, payload) {
 });
 
 ipcMain.handle('get-sys-stats', async function () {
-  var cpus = os.cpus();
-  var totalIdle = 0;
-  var totalTick = 0;
-
-  for (var i = 0; i < cpus.length; i++) {
-    var cpu = cpus[i];
-    for (var t in cpu.times) totalTick += cpu.times[t];
-    totalIdle += cpu.times.idle;
-
-    if (cpuPrev[i]) {
-      var prevTotal = 0;
-      var prevIdle = cpuPrev[i].times.idle;
-      for (var pt in cpuPrev[i].times) prevTotal += cpuPrev[i].times[pt];
-      totalTick -= prevTotal;
-      totalIdle -= prevIdle;
-    }
-  }
-
-  cpuPrev = cpus;
-  var cpuUsage = totalTick > 0 ? Math.round((1 - totalIdle / totalTick) * 100) : 0;
-
+  var si = getSystemInfo();
   var totalMem = os.totalmem();
   var freeMem = os.freemem();
   var usedMem = totalMem - freeMem;
@@ -144,37 +129,64 @@ ipcMain.handle('get-sys-stats', async function () {
     if (ipAddress !== 'OFFLINE') break;
   }
 
-  // Get hardware info (GPU, temperature, fan)
+  // CPU: use systeminformation's currentLoad() which uses OS APIs
+  var cpuUsage = 0;
+  try {
+    var load = await si.currentLoad();
+    cpuUsage = Math.round(load.currentLoad);
+  } catch (e) {}
+
+  var cpus = os.cpus();
+
+  // GPU: find the real discrete GPU (not Oray virtual driver)
   var si = getSystemInfo();
-  var gpuInfo = { name: 'N/A', utilization: 0, memory: 0 };
+  var gpuInfo = { name: 'N/A', utilization: 0, memory: 0, temperature: 0 };
   var temperature = 0;
   var fanSpeed = 0;
 
   try {
     const graphics = await si.graphics();
     if (graphics.controllers && graphics.controllers.length > 0) {
-      const gpu = graphics.controllers[0];
+      // Skip virtual/placeholder GPU devices, find the real GPU (NVIDIA/AMD/Intel)
+      const realGpu = graphics.controllers.find(g =>
+        g.vendor && !/oray|virtual|placeholder/i.test(g.vendor) && g.model !== 'Unknown GPU'
+      ) || graphics.controllers[0];
       gpuInfo = {
-        name: gpu.model || 'Unknown GPU',
-        utilization: gpu.utilizationGpu || 0,
-        memory: gpu.utilizationMemory || 0,
+        name: realGpu.model || 'Unknown GPU',
+        utilization: realGpu.utilizationGpu || 0,
+        memory: realGpu.memoryTotal || 0,
+        temperature: realGpu.temperatureGpu || 0,
       };
-    }
-  } catch (e) {}
+      temperature = realGpu.temperatureGpu || 0;
+          } else {
+          }
+  } catch (e) {
+    console.error('[MAIN] GPU query failed:', e.message);
+  }
 
+  // Temperature: use cpuTemperature, fall back to GPU temp
   try {
-    const thermal = await si.thermal();
-    if (thermal && thermal.length > 0) {
-      temperature = thermal[0].main || 0;
-    }
-  } catch (e) {}
+    const cpuTemp = await si.cpuTemperature();
+    if (cpuTemp && cpuTemp.main != null) {
+      temperature = cpuTemp.main;
+          }
+  } catch (e) {
+    console.error('[MAIN] CPU temp query failed:', e.message);
+  }
 
+  // Fan: systeminformation may not expose fan data on this platform
   try {
-    const fans = await si.fans();
-    if (fans && fans.length > 0) {
-      fanSpeed = fans[0].speed || 0;
-    }
-  } catch (e) {}
+    // Try fans() if available (newer versions)
+    if (typeof si.fans === 'function') {
+      const fans = await si.fans();
+      if (fans && fans.length > 0) {
+        fanSpeed = fans[0].speed || 0;
+              }
+    } else {
+          }
+  } catch (e) {
+    console.error('[MAIN] Fan query failed:', e.message);
+  }
 
   return {
     cpu: cpuUsage,
@@ -205,8 +217,7 @@ function setupAutoUpdater(win) {
     try {
       autoUpdater = require('electron-updater');
     } catch (e) {
-      console.log('[MAIN] autoUpdater not available');
-      return;
+            return;
     }
   }
 
@@ -273,15 +284,12 @@ var CONFIG_DIR = path.join(os.homedir(), '.prts-vis');
 var CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 ipcMain.handle('save-config', function (_event, config) {
-  console.log('[MAIN] save-config received, apiKey length:', config.apiKey ? config.apiKey.length : 0);
-  try {
+    try {
     if (!fs.existsSync(CONFIG_DIR)) {
       fs.mkdirSync(CONFIG_DIR, { recursive: true });
     }
-    console.log('[MAIN] Writing config:', JSON.stringify(config).slice(0, 100));
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
-    console.log('[MAIN] Config saved to:', CONFIG_FILE);
-    return { success: true };
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+        return { success: true };
   } catch (e) {
     console.error('[MAIN] Failed to save config:', e.message);
     return { success: false, error: e.message };
@@ -295,8 +303,7 @@ ipcMain.handle('load-config', function () {
     }
     var raw = fs.readFileSync(CONFIG_FILE, 'utf8');
     var config = JSON.parse(raw);
-    console.log('[MAIN] Config loaded from:', CONFIG_FILE);
-    return { success: true, config };
+        return { success: true, config };
   } catch (e) {
     console.error('[MAIN] Failed to load config:', e.message);
     return { success: false, error: e.message, config: null };

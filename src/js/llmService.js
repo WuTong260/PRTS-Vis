@@ -1,8 +1,10 @@
 import { getConfig } from './configManager.js';
-import { AGENT_SYSTEM_PROMPT, TOOLS_SCHEMA } from './agentKernel.js';
-import { executeTool } from './tools.js';
 import { CompactionManager } from './context/compactionManager.js';
 import { estimateMessagesTokens, detectModelPrefix, checkCompactionThreshold } from './context/tokenCounter.js';
+
+var AGENT_SYSTEM_PROMPT = '你是 PRTS (Primary Research and Tactical System) 安全审计内核。你是一个硬核、专业、冷静的自动化安全专家。你的职责是协助用户进行本地漏洞库查询、在线威胁情报抓取以及配置文件审计。不要提及你是由哪家公司开发的，也不要自称为特定的大模型名称。如果用户询问，请回答：『我是 PRTS 安全审计内核，当前正在执行 tactical 终端任务。』\n\n当调用工具并得到返回数据后，你必须使用以下格式输出点对点的分析报告：\n### [THREAT] [组件或漏洞名称]\n- **Evidence（证据）**: ...\n- **Explainer（原理）**: ...\n- **Action（修复建议）**: ...\n\n你可以综合本地工具和在线抓取工具的数据。如果是通过在线工具获取的情报，请在报告的 Evidence 中标注 [DATA_SOURCE: ONLINE]。';
+var TOOLS_SCHEMA = [];
+var executeTool = null;
 
 var chatHistory = [];
 var MAX_HISTORY = 10;
@@ -22,6 +24,25 @@ var _onCompactionStatus = null;
 
 // LLM client wrapper for compaction
 var _llmClient = null;
+
+// Lazy-load agentKernel (contains Node.js modules, only works in Electron/Node.js environment)
+var _agentKernelReady = false;
+
+async function _ensureAgentKernel() {
+  if (_agentKernelReady) return;
+  try {
+    const kernel = await import('./agentKernel.js');
+    AGENT_SYSTEM_PROMPT = kernel.AGENT_SYSTEM_PROMPT;
+    TOOLS_SCHEMA = kernel.TOOLS_SCHEMA;
+    executeTool = kernel.executeTool;
+    _agentKernelReady = true;
+    console.log('[LLM] Agent kernel loaded successfully');
+  } catch (e) {
+    console.warn('[LLM] Agent kernel not available:', e.message);
+    TOOLS_SCHEMA = [];
+    _agentKernelReady = true; // Mark as done to avoid re-trying every message
+  }
+}
 
 export function setCompactionStatusCallback(cb) {
   _onCompactionStatus = cb;
@@ -165,6 +186,9 @@ export async function sendMessage(text, onChunk, signal) {
       _messageQueue.push({ text, onChunk, signal, resolve, reject });
     });
   }
+
+  // Lazy-load agentKernel before first tool use
+  await _ensureAgentKernel();
 
   return _doSendMessage(text, onChunk, signal, cfg);
 }
@@ -366,7 +390,7 @@ async function _streamFetch(cfg, messages, tools, onChunk, signal) {
           function: { name: dtc.name, arguments: argsJson },
         });
 
-        var dResult = await executeTool(dtc.name, dtc.args);
+        var dResult = executeTool ? await executeTool(dtc.name, dtc.args) : JSON.stringify({ error: 'Tools not available' });
 
         toolMessages.push({
           role: 'tool',
@@ -427,7 +451,7 @@ async function _streamFetch(cfg, messages, tools, onChunk, signal) {
         parsedArgs = { config_text: tc2.arguments };
       }
 
-      var toolResult = await executeTool(tc2.name, parsedArgs);
+      var toolResult = executeTool ? await executeTool(tc2.name, parsedArgs) : JSON.stringify({ error: 'Tools not available' });
 
       messages.push({
         role: 'tool',

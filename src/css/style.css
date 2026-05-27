@@ -1080,12 +1080,14 @@ html, body {
 
 .sys-metrics {
   display: flex;
-  gap: calc(16px * var(--ui-scale, 1));
+  flex-wrap: wrap;
+  gap: calc(8px * var(--ui-scale, 1));
 }
 .sys-metric {
   font-family: 'Courier New', Consolas, 'Microsoft YaHei', monospace;
-  font-size: calc(14px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1));
   letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 .sys-metric.cpu {
   color: #00ffcc;
@@ -1103,10 +1105,6 @@ html, body {
   color: #ff4444;
   text-shadow: 0 0 calc(6px * var(--ui-scale, 1)) rgba(255, 68, 68, 0.4);
 }
-.sys-metric.fan {
-  color: #66ccff;
-  text-shadow: 0 0 calc(6px * var(--ui-scale, 1)) rgba(102, 204, 255, 0.4);
-}
 
 #sys-visualizer {
   width: 100%;
@@ -1122,11 +1120,16 @@ html, body {
   font-family: 'Courier New', Consolas, 'Microsoft YaHei', monospace;
   font-size: calc(12px * var(--ui-scale, 1));
   line-height: 1.6;
+  overflow: hidden;
+  min-width: 0;
 }
 .spec-row {
   display: flex;
   gap: calc(8px * var(--ui-scale, 1));
   align-items: baseline;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  min-width: 0;
 }
 .spec-label {
   color: var(--amber);
@@ -1136,6 +1139,9 @@ html, body {
 .spec-val {
   color: #00ffcc;
   text-shadow: 0 0 calc(4px * var(--ui-scale, 1)) rgba(0, 255, 204, 0.25);
+  overflow-wrap: break-word;
+  word-break: break-all;
+  min-width: 0;
 }
 
 #sys-visualizer::after {
