@@ -1095,6 +1095,18 @@ html, body {
   color: var(--amber);
   text-shadow: 0 0 calc(6px * var(--ui-scale, 1)) rgba(255, 184, 0, 0.4);
 }
+.sys-metric.gpu {
+  color: #ff66ff;
+  text-shadow: 0 0 calc(6px * var(--ui-scale, 1)) rgba(255, 102, 255, 0.4);
+}
+.sys-metric.temp {
+  color: #ff4444;
+  text-shadow: 0 0 calc(6px * var(--ui-scale, 1)) rgba(255, 68, 68, 0.4);
+}
+.sys-metric.fan {
+  color: #66ccff;
+  text-shadow: 0 0 calc(6px * var(--ui-scale, 1)) rgba(102, 204, 255, 0.4);
+}
 
 #sys-visualizer {
   width: 100%;

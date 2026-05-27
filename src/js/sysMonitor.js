@@ -1,6 +1,6 @@
 var _require = typeof require !== 'undefined' ? require : globalThis.require;
 
-var cpuEl, ramEl, canvas, ctx, historyEl;
+var cpuEl, ramEl, gpuEl, tempEl, fanEl, canvas, ctx, historyEl;
 var cpuHistory = [];
 var MAX_HISTORY = 50;
 var pollTimer;
@@ -70,6 +70,18 @@ function pollStats(ipcRenderer) {
   });
 }
 
+function pollHardwareStats(ipcRenderer) {
+  ipcRenderer.invoke('get-sys-stats').then(function (stats) {
+    if (gpuEl) gpuEl.textContent = '[GPU: ' + (stats.gpu?.utilization || 0) + '% ' + (stats.gpu?.name?.substring(0, 15) || 'N/A') + ']';
+    if (tempEl) tempEl.textContent = '[TEMP: ' + (stats.temperature || 0) + '°C]';
+    if (fanEl) fanEl.textContent = '[FAN: ' + (stats.fanSpeed || 0) + ' RPM]';
+  }).catch(function () {
+    if (gpuEl) gpuEl.textContent = '[GPU: ERR]';
+    if (tempEl) tempEl.textContent = '[TEMP: ERR]';
+    if (fanEl) fanEl.textContent = '[FAN: ERR]';
+  });
+}
+
 export function initSysMonitor() {
   var ipcRenderer;
   try {
@@ -80,6 +92,9 @@ export function initSysMonitor() {
 
   cpuEl = document.querySelector('.sys-metric.cpu');
   ramEl = document.querySelector('.sys-metric.ram');
+  gpuEl = document.querySelector('.sys-metric.gpu');
+  tempEl = document.querySelector('.sys-metric.temp');
+  fanEl = document.querySelector('.sys-metric.fan');
   canvas = document.getElementById('sys-visualizer');
   ctx = canvas.getContext('2d');
   historyEl = document.getElementById('sys-history');
@@ -101,6 +116,9 @@ export function initSysMonitor() {
         { label: '[系统架构]',   val: stats.arch },
         { label: '[系统内核]',   val: stats.platform + ' ' + stats.release },
         { label: '[NET_IP]',    val: stats.ipAddress },
+        { label: '[GPU]',       val: (stats.gpu?.name || 'N/A').substring(0, 25) },
+        { label: '[温度]',       val: (stats.temperature || 0) + '°C' },
+        { label: '[风扇]',       val: (stats.fanSpeed || 0) + ' RPM' },
         { label: '[驱动引擎]',   val: 'Node v' + stats.nodeVer },
         { label: '[终端外壳]',   val: 'Electron v' + stats.electronVer },
       ];
@@ -113,6 +131,10 @@ export function initSysMonitor() {
   });
 
   pollStats(ipcRenderer);
-  pollTimer = setInterval(function () { pollStats(ipcRenderer); }, 1000);
+  pollHardwareStats(ipcRenderer);
+  pollTimer = setInterval(function () {
+    pollStats(ipcRenderer);
+    pollHardwareStats(ipcRenderer);
+  }, 1000);
   drawRadar();
 }

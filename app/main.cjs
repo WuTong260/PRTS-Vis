@@ -2,9 +2,18 @@ const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const { autoUpdater } = require('electron-updater');
+
+// autoUpdater loaded lazily in setupAutoUpdater() to avoid init errors
+var autoUpdater = null;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// systeminformation is loaded lazily via getSystemInfo() to avoid blocking the main process
+var si = null;
+function getSystemInfo() {
+  if (!si) si = require('systeminformation');
+  return si;
+}
 
 function setupPermissions() {
   session.defaultSession.setPermissionRequestHandler(
@@ -96,7 +105,7 @@ ipcMain.handle('TOOL_CONFIRM', async function (event, payload) {
   };
 });
 
-ipcMain.handle('get-sys-stats', function () {
+ipcMain.handle('get-sys-stats', async function () {
   var cpus = os.cpus();
   var totalIdle = 0;
   var totalTick = 0;
@@ -135,6 +144,38 @@ ipcMain.handle('get-sys-stats', function () {
     if (ipAddress !== 'OFFLINE') break;
   }
 
+  // Get hardware info (GPU, temperature, fan)
+  var si = getSystemInfo();
+  var gpuInfo = { name: 'N/A', utilization: 0, memory: 0 };
+  var temperature = 0;
+  var fanSpeed = 0;
+
+  try {
+    const graphics = await si.graphics();
+    if (graphics.controllers && graphics.controllers.length > 0) {
+      const gpu = graphics.controllers[0];
+      gpuInfo = {
+        name: gpu.model || 'Unknown GPU',
+        utilization: gpu.utilizationGpu || 0,
+        memory: gpu.utilizationMemory || 0,
+      };
+    }
+  } catch (e) {}
+
+  try {
+    const thermal = await si.thermal();
+    if (thermal && thermal.length > 0) {
+      temperature = thermal[0].main || 0;
+    }
+  } catch (e) {}
+
+  try {
+    const fans = await si.fans();
+    if (fans && fans.length > 0) {
+      fanSpeed = fans[0].speed || 0;
+    }
+  } catch (e) {}
+
   return {
     cpu: cpuUsage,
     totalMem: totalMem,
@@ -150,11 +191,24 @@ ipcMain.handle('get-sys-stats', function () {
     electronVer: process.versions.electron,
     nodeVer: process.versions.node,
     ipAddress: ipAddress,
+    gpu: gpuInfo,
+    temperature: temperature,
+    fanSpeed: fanSpeed,
   };
 });
 
 function setupAutoUpdater(win) {
   if (isDev) return;
+
+  // Lazy load autoUpdater to avoid initialization errors
+  if (!autoUpdater) {
+    try {
+      autoUpdater = require('electron-updater');
+    } catch (e) {
+      console.log('[MAIN] autoUpdater not available');
+      return;
+    }
+  }
 
   autoUpdater.autoDownload = false;
 
