@@ -223,6 +223,12 @@ function setupAutoUpdater(win) {
 
   autoUpdater.autoDownload = false;
 
+  // Use raw.githubusercontent.com for reliable update metadata
+  autoUpdater.autoUpdater.setFeedURL({
+    provider: 'generic',
+    url: 'https://raw.githubusercontent.com/WuTong260/PRTS-Vis/main/',
+  });
+
   autoUpdater.on('update-available', function (info) {
     win.webContents.send('update-status', {
       status: 'available',
