@@ -1,11 +1,11 @@
 version: 1.2.2
 files:
   - url: PRTS-Vis-Setup-1.2.2.exe
-    sha512: 1ENDjlpWBETrx401WrOv+DlLeupOFE0IUZBOs5TNOjBOxIcmwqLGDp5rVAkE/lf2jFa520liaalYjW/8DA4qlQ==
-    size: 104167582
+    sha512: UIMeUiB+N3B7yI2o3v98iqB7n1vdBRgKOEdbQFXLkVj2zh4iV1LH8ly4BodMjm8eP+yQze5hP0K8+0ZDhfDcbw==
+    size: 104167487
   - url: PRTS-Vis-1.2.2.exe
-    sha512: 694c45237ccb2cf208fb735ac7c6a48dacf5497f2743311717a8ea206d39ce7bc69774a327c0b797cedc69407cf58ffe9de6eb6ffcea51e0e3873fdd310c311b
-    size: 103880495
+    sha512: a968ef15243349c15aa7b4e08bf9b02c1de23db5837b4780549cc1ab7a066d3bb8a30247f15d467b30ae69a0d358a8c1e472a0a26a94b612f62dec0d77b13ee5
+    size: 103880397
 path: PRTS-Vis-Setup-1.2.2.exe
-sha512: 1ENDjlpWBETrx401WrOv+DlLeupOFE0IUZBOs5TNOjBOxIcmwqLGDp5rVAkE/lf2jFa520liaalYjW/8DA4qlQ==
-releaseDate: '2026-06-08T07:15:39.736Z'
+sha512: UIMeUiB+N3B7yI2o3v98iqB7n1vdBRgKOEdbQFXLkVj2zh4iV1LH8ly4BodMjm8eP+yQze5hP0K8+0ZDhfDcbw==
+releaseDate: '2026-06-08T07:38:12.838Z'
