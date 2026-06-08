@@ -506,6 +506,8 @@ function init() {
       var result = await ipcRenderer.invoke('check-for-update');
       if (result && result.status === 'dev-mode') {
         appendMessage('ai', '[SYS] 开发模式，跳过更新检查。');
+      } else if (result && result.status === 'error') {
+        appendMessage('ai', '[SYS] 更新检查失败: ' + result.message);
       }
     });
 

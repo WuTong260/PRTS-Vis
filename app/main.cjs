@@ -267,10 +267,19 @@ function setupAutoUpdater(win) {
   }, 5000);
 }
 
-ipcMain.handle('check-for-update', function () {
+ipcMain.handle('check-for-update', async function () {
   if (isDev) return { status: 'dev-mode' };
   try {
-    var result = autoUpdater.checkForUpdates();
+    // Ensure feed URL is set before checking
+    autoUpdater.autoUpdater.setFeedURL({
+      provider: 'generic',
+      url: 'https://raw.githubusercontent.com/WuTong260/PRTS-Vis/main/',
+    });
+    var token = autoUpdater.checkForUpdates();
+    var timeout = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('检查更新超时，请稍后重试')); }, 15000);
+    });
+    var result = await Promise.race([token.promise, timeout]);
     return result;
   } catch (e) {
     return { status: 'error', message: e.message };
